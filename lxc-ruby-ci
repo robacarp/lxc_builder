@@ -1,0 +1,17 @@
+#!/usr/bin/ruby
+#Arguments the script needs to accept
+#
+# --path=/path/to/lxc/config/dir
+# --name=host_name
+
+# default options
+
+# cd into the correct working directory so ruby can find the modules
+cwd = File.join File.dirname(__FILE__), 'lxc_builder'
+Dir.chdir cwd
+
+# load it up
+require File.join(cwd, 'lxc_builder')
+
+# SHOTGUN BANG WHATS UP WITH THAT THANG
+LXCBuilder.build
