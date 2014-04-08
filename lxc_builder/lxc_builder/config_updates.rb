@@ -1,5 +1,6 @@
 module ConfigUpdates
   def update_configs
+    p "updating config files"
     write_file 'etc/hosts', hosts
     write_file 'etc/network/interfaces', interfaces
     write_file 'etc/hostname', hostname
@@ -10,6 +11,9 @@ module ConfigUpdates
     rm_ttys
     update_lxc_config
     set_shm
+    add_gateway_route
+
+    true
   end
 
   def hostname
@@ -110,12 +114,15 @@ CONFIG
   end
 
   def rm_ttys
+    p "\t removing extra ttys"
     %w|tty5.conf tty6.conf|.each do |filename|
       FileUtils.rm_f( File.join(options[:root], '/etc/init', filename) )
     end
   end
 
   def update_lxc_config
+    p "\t populating lxc config file"
+
     config_file = File.join(options[:path], 'config')
     lxc_config = File.read( config_file ).split("\n")
     veth_definitions = lxc_config.grep(/lxc\.network\.type[ \t]*=[ \t]*veth/).count
@@ -130,11 +137,14 @@ CONFIG
         mac_address += ":" + octet
       end
 
+      p "\t\033[32mMac Address: #{mac_address}\033[0m"
       lxc_config.push "lxc.network.hwaddr = " + mac_address
     end
 
     # assign an ip address TODO make this come from the options hash TODO make this smarter
-    lxc_config.push "lxc.network.ipv4 = 10.250.100." + (rand(55) + 100).to_s
+    ip_address = "10.250.100." + (rand(55) + 100).to_s
+    lxc_config.push "lxc.network.ipv4 = " + ip_address
+    p "\t\033[32mIP Address: #{ip_address}\033[0m"
 
     File.open( config_file, 'w') do |file|
       file.puts *lxc_config
@@ -147,5 +157,18 @@ CONFIG
     shm = File.join(options[:root], '/dev/shm')
     FileUtils.mv shm, shm+".bak"
     FileUtils.ln_s "/run/shm", shm
+  end
+
+  def add_gateway_route
+    p "\tAdding default gateway"
+    rc_local_path = File.join( options[:root], 'etc/rc.local' )
+    rc_local = File.read(rc_local_path).split("\n")
+    rc_local = rc_local.reject {|line| line =~ /exit/}
+    rc_local.push "route add default gw 10.250.100.1"
+
+    # I swear there was a 1 line way to do this...
+    File.open rc_local_path, 'w' do |file|
+      file.puts *rc_local
+    end
   end
 end

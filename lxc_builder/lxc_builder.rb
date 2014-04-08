@@ -25,6 +25,7 @@ class LXCBuilder
   end
 
   def write_file path, data
+    p "\t updating #{path}"
     File.open File.join(options[:root], path), 'w' do |f|
       f << data
     end
