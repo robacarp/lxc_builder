@@ -2,6 +2,7 @@ require 'lxc_builder/options'
 require 'lxc_builder/rootfs'
 require 'lxc_builder/config_updates'
 require 'lxc_builder/user_setup'
+require 'lxc_builder/trim'
 require 'open3'
 
 class LXCBuilder
@@ -9,6 +10,7 @@ class LXCBuilder
   include Rootfs
   include ConfigUpdates
   include UserSetup
+  include Trim
 
   def self.build
     self.new
@@ -18,7 +20,8 @@ class LXCBuilder
     parse
     make_rootfs &&
     update_configs &&
-    user_setup
+    user_setup &&
+    prune_container
   end
 
   def write_file path, data
@@ -37,7 +40,7 @@ class LXCBuilder
 
   def e command, input = nil
     # TODO pty this
-    puts "executing: " + command
+    # p "executing: " + command
     err, output = '', ''
 
     Open3.popen3 command do |stdin, stdout, stderr, process|
@@ -54,9 +57,9 @@ class LXCBuilder
 
     status = $?.to_i
 
-    puts "stdout: "+ output
-    puts "stderr: "+ err
-    puts "exit status: " + status.to_s
+    # p "stdout: "+ output
+    # p "stderr: "+ err
+    # p "exit status: " + status.to_s
   end
 
   def run

@@ -8,7 +8,8 @@ module Options
       :cache_dir => '/var/cache/lxc/ruby-ci',
       :purge_cache => false,
       :path => '',
-      :name => 'lxc-container-' + rand(35).to_s
+      :name => 'lxc-container-' + rand(35).to_s,
+      :arch => 'amd64'
     }
 
     OptionParser.new do |opts|

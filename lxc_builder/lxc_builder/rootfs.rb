@@ -9,7 +9,7 @@ module Rootfs
     binary = 'debootstrap'
 
     components = "main,universe"
-    arch = 'amd64'
+    arch = options[:arch]
     packages = [:vim, :ssh, :curl]
     release = "precise"
     mirror = "http://archive.ubuntu.com/ubuntu"
