@@ -1,19 +1,27 @@
+require 'erb'
+require 'ostruct'
+
 module ConfigUpdates
   def update_configs
     p "updating config files"
-    write_file 'etc/hosts', hosts
-    write_file 'etc/network/interfaces', interfaces
-    write_file 'etc/hostname', hostname
-
-    #FIXME sure, put a .. in the file.
-    write_file '../fstab', fstab
 
     rm_ttys
     update_lxc_config
     set_shm
     add_gateway_route
 
+    write_templates
+
     true
+  end
+
+  def write_templates
+    write_file File.join(options[:root], 'etc/hosts'), hosts
+    write_file File.join(options[:root], 'etc/network/interfaces'), interfaces
+    write_file File.join(options[:root], 'etc/hostname'), hostname
+
+    #FIXME sure, put a .. in the file.
+    write_file File.join(options[:path], 'fstab'), fstab
   end
 
   def hostname
@@ -21,38 +29,15 @@ module ConfigUpdates
   end
 
   def interfaces
-    <<-EOF
-# This file describes the network interfaces available on your system
-# and how to activate them. For more information, see interfaces(5).
-
-# The loopback network interface
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet manual
-EOF
+    render( "templates/interfaces.erb" )
   end
 
   def hosts
-    <<-EOF
-127.0.0.1   localhost
-127.0.1.1   #{hostname}
-
-# The following lines are desirable for IPv6 capable hosts
-::1     ip6-localhost ip6-loopback
-fe00::0 ip6-localnet
-ff00::0 ip6-mcastprefix
-ff02::1 ip6-allnodes
-ff02::2 ip6-allrouters
-   EOF
+    render( "templates/hosts.erb" )
   end
 
   def fstab
-    <<EOF
-proc            proc         proc    nodev,noexec,nosuid 0 0
-sysfs           sys          sysfs defaults  0 0
-EOF
+    render( "templates/fstab.erb" )
   end
 
   # shamelessly ripped off line for line from the ubuntu template,
@@ -66,51 +51,7 @@ EOF
       ttydir = ""
     end
 
-    <<-CONFIG
-lxc.utsname = #{options[:name]}
-
-lxc.devttydir =#{ttydir}
-lxc.tty = 4
-lxc.pts = 1024
-lxc.rootfs = #{options[:root]}
-lxc.mount  = #{options[:path]}/fstab
-lxc.arch = #{options[:arch]}
-lxc.cap.drop = sys_module mac_admin
-lxc.pivotdir = lxc_putold
-
-# uncomment the next line to run the container unconfined:
-#lxc.aa_profile = unconfined
-
-lxc.cgroup.devices.deny = a
-# Allow any mknod (but not using the node)
-lxc.cgroup.devices.allow = c *:* m
-lxc.cgroup.devices.allow = b *:* m
-# /dev/null and zero
-lxc.cgroup.devices.allow = c 1:3 rwm
-lxc.cgroup.devices.allow = c 1:5 rwm
-# consoles
-lxc.cgroup.devices.allow = c 5:1 rwm
-lxc.cgroup.devices.allow = c 5:0 rwm
-#lxc.cgroup.devices.allow = c 4:0 rwm
-#lxc.cgroup.devices.allow = c 4:1 rwm
-# /dev/{,u}random
-lxc.cgroup.devices.allow = c 1:9 rwm
-lxc.cgroup.devices.allow = c 1:8 rwm
-lxc.cgroup.devices.allow = c 136:* rwm
-lxc.cgroup.devices.allow = c 5:2 rwm
-# rtc
-lxc.cgroup.devices.allow = c 254:0 rwm
-#fuse
-lxc.cgroup.devices.allow = c 10:229 rwm
-#tun
-lxc.cgroup.devices.allow = c 10:200 rwm
-#full
-lxc.cgroup.devices.allow = c 1:7 rwm
-#hpet
-lxc.cgroup.devices.allow = c 10:228 rwm
-#kvm
-lxc.cgroup.devices.allow = c 10:232 rwm
-CONFIG
+    render( "templates/lxc_config_footer.erb", {:ttydir => ttydir} )
   end
 
   def rm_ttys
@@ -153,7 +94,7 @@ CONFIG
   end
 
   def set_shm
-    # I'm about 86.7% sure this is pointless...
+    # I'm about 86.7% sure this is pointless...at least on our system
     shm = File.join(options[:root], '/dev/shm')
     FileUtils.mv shm, shm+".bak"
     FileUtils.ln_s "/run/shm", shm
@@ -170,5 +111,12 @@ CONFIG
     File.open rc_local_path, 'w' do |file|
       file.puts *rc_local
     end
+  end
+
+  private
+  def render file, vars = {}
+    vars = {:options => options}.merge(vars)
+    context = OpenStruct.new(vars).instance_eval { binding }
+    ERB.new( File.read(file) ).result( context )
   end
 end
