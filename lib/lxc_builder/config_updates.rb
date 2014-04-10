@@ -70,22 +70,12 @@ module ConfigUpdates
     hwaddr_definitions = lxc_config.grep(/lxc\.network\.hwaddr/).count
 
     # check to make sure that only one eth exist and make sure it has a mac address
+    p "\t\033[32mIP Address: #{options[:ip]}\033[0m"
+
     if veth_definitions == 1 && hwaddr_definitions == 0
-      mac_address = "00:16:3e"
-      3.times do
-        # generate a random octet, minimum 0x10 so we don't have to pad the number
-        octet = (rand(240) + 16).to_s(16)
-        mac_address += ":" + octet
-      end
-
-      p "\t\033[32mMac Address: #{mac_address}\033[0m"
-      lxc_config.push "lxc.network.hwaddr = " + mac_address
+      p "\t\033[32mMac Address: #{options[:mac]}\033[0m"
+      lxc_config.push "lxc.network.hwaddr = " + options[:mac]
     end
-
-    # assign an ip address TODO make this come from the options hash TODO make this smarter
-    ip_address = "10.250.100." + (rand(55) + 100).to_s
-    lxc_config.push "lxc.network.ipv4 = " + ip_address
-    p "\t\033[32mIP Address: #{ip_address}\033[0m"
 
     File.open( config_file, 'w') do |file|
       file.puts *lxc_config
@@ -101,11 +91,13 @@ module ConfigUpdates
   end
 
   def add_gateway_route
-    p "\tAdding default gateway"
+    return if @options[:gateway].nil?
+
+    p "\tSetting gateway: #{options[:gateway]}"
     rc_local_path = File.join( options[:root], 'etc/rc.local' )
     rc_local = File.read(rc_local_path).split("\n")
     rc_local = rc_local.reject {|line| line =~ /exit/}
-    rc_local.push "route add default gw 10.250.100.1"
+    rc_local.push "route add default gw #{options[:gateway]}"
 
     # I swear there was a 1 line way to do this...
     File.open rc_local_path, 'w' do |file|
