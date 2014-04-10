@@ -12,7 +12,7 @@ project_name = 'lxc_builder'
 this_dir = File.dirname(__FILE__)
 directories = [
     File.join( this_dir, project_name ),
-    File.join( this_dir, project_name, project_name )
+    File.join( this_dir, project_name, 'lib' )
 ]
 
 # It is possible we can detect where the script should be run from by resolving
@@ -25,7 +25,7 @@ if File.symlink?(__FILE__)
     link = File.join File.dirname(__FILE__), link
   end
 
-  directories.push File.join(File.dirname(link), project_name)
+  directories.push File.join(File.dirname(link), 'lib')
 end
 
 while ! File.exists?('.hereiam')
