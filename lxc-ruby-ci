@@ -4,14 +4,47 @@
 # --path=/path/to/lxc/config/dir
 # --name=host_name
 
-# default options
+# We need to cd into the correct working directory so ruby can find the modules
+# Buuuuut...there are (at least) a couple possibilities as to where this script
+# is getting run from.
+project_name = 'lxc_builder'
 
-# cd into the correct working directory so ruby can find the modules
-cwd = File.join File.dirname(__FILE__), 'lxc_builder'
-Dir.chdir cwd
+this_dir = File.dirname(__FILE__)
+directories = [
+    File.join( this_dir, project_name ),
+    File.join( this_dir, project_name, project_name )
+]
+
+# It is possible we can detect where the script should be run from by resolving
+# the symlink of this file and moving to that directory.
+if File.symlink?(__FILE__)
+  link = File.readlink(__FILE__)
+
+  # detect and completely resolve relative links
+  if link[0].chr != '/'
+    link = File.join File.dirname(__FILE__), link
+  end
+
+  directories.push File.join(File.dirname(link), project_name)
+end
+
+while ! File.exists?('.hereiam')
+  if directories.empty?
+    break
+  end
+
+  Dir.chdir directories.shift
+end
+
+if ! File.exists?('.hereiam')
+  puts "\033[31mCould not cd into builder directory, quitting\033[0m"
+  exit 1
+end
+
+puts "\033[32m Found source at #{Dir.pwd}\033[0m"
 
 # load it up
-require File.join(cwd, 'lxc_builder')
+require project_name
 
 # SHOTGUN BANG WHATS UP WITH THAT THANG
 LXCBuilder.build
