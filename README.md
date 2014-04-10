@@ -1,4 +1,4 @@
-LXC Builder Template
+Better LXC Builder
 =======
 
 The available LXC templates (on our systems) are very complicated and inflexible. The ubuntu LXC template is a rather long and complicated bash script that makes it difficult to understand what is going on when an LXC is created and (perhaps more importantly) updating important variables is rather difficult difficult or left entirely up to the operator (eg ip address).
